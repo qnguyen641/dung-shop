@@ -99,47 +99,9 @@ function formatCurrency(amount) {
     return Number(amount).toLocaleString("vi-VN");
 }
 
-// Utility function to generate a random date within the last 'daysBack' days
-function getRandomReceiptDate(daysBack) {
-    const date = new Date();
-    date.setDate(date.getDate() - getRandomInt(0, daysBack));
-    date.setHours(getRandomInt(8, 20), getRandomInt(0, 59));
-    return date;
-}
-
-// Function to create a dummy receipt with random items for demonstration
-function createDummyReceipt() {
-    const receiptItems = [];
-    const itemCount = getRandomInt(2, 5);
-
-    for (let i = 0; i < itemCount; i++) {
-        const useLaundry = Math.random() < 0.5;
-        if (useLaundry) {
-            const item = laundryFood[getRandomInt(0, laundryFood.length - 1)];
-            const quantity = item.unit === "kg" ? (Math.random() < 0.5 ? 0.5 : getRandomInt(1, 3)) : getRandomInt(1, 2);
-            const total = item.unit === "kg" && quantity < 1 ? 30000 : item.foodPrice * quantity;
-            receiptItems.push({ ...item, quantity, total, type: "laundry" });
-        } else {
-            const item = food[getRandomInt(0, food.length - 1)];
-            const quantity = getRandomInt(1, 3);
-            const total = item.foodPrice * quantity;
-            receiptItems.push({ ...item, quantity, total, type: "xoi", unit: "suất" });
-        }
-    }
-
-    const totalAmount = receiptItems.reduce((sum, item) => sum + item.total, 0);
-    const transactionCode = "TXN" + getRandomInt(100000, 999999);
-    return {
-        items: receiptItems,
-        total: totalAmount,
-        date: getRandomReceiptDate(10).toLocaleString("vi-VN"),
-        transactionCode: transactionCode
-    };
-}
-
 // Global variables for cart and paid receipts
 let cart = [];
-let paidReceipts = JSON.parse(localStorage.getItem("paidReceipts")) || Array.from({ length: 20 }, () => createDummyReceipt());
+let paidReceipts = JSON.parse(localStorage.getItem("paidReceipts")) || [];
 
 // ─── Supabase receipt helpers ─────────────────────────────────────────────────
 async function saveReceiptToSupabase(receipt) {
