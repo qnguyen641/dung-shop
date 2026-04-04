@@ -562,7 +562,7 @@ document.addEventListener("DOMContentLoaded", function() {
             markPaidButton.disabled = total === 0;
         }
 
-        // Generate VNPay payment button
+        // Generate VietQR payment QR
         if (total > 0) {
             const orderCode = window.currentOrderCode || getRandomInt(100000, 999999);
             const transactionCode = "TXN" + orderCode;
@@ -588,49 +588,13 @@ document.addEventListener("DOMContentLoaded", function() {
             window.currentTransactionDateTime = transactionDateTime;
             window.currentTransactionContent = transactionContent;
 
-            // Only create payment link once per order
             if (!window.currentOrderCode) {
                 window.currentOrderCode = orderCode;
-                const qrDisplay = document.getElementById("qr-code-display");
-                qrDisplay.innerHTML = `<p style="color:#888">⏳ Đang tạo link thanh toán...</p>`;
-
-                fetch("/api/create-payment", {
-                    method: "POST",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({
-                        orderCode,
-                        amount: total,
-                        description: transactionContent,
-                        buyerName: purchaserName
-                    })
-                })
-                .then(r => r.json())
-                .then(data => {
-                    if (data.paymentUrl) {
-                        // Save cart before redirecting to VNPay
-                        localStorage.setItem("pendingCart", JSON.stringify({
-                            cart,
-                            transactionCode,
-                            transactionDateTime,
-                            transactionContent,
-                            purchaserName,
-                            total,
-                            orderCode
-                        }));
-                        qrDisplay.innerHTML = `
-                            <a href="${data.paymentUrl}" class="action-button" style="display:inline-block;text-decoration:none;padding:12px 24px;font-size:1rem;">
-                                💳 Thanh toán qua VNPay
-                            </a>
-                            <p style="margin-top:8px;color:#888;font-size:0.85rem;">Nhấn để chuyển đến cổng thanh toán VNPay</p>
-                        `;
-                        startPaymentPolling(orderCode);
-                    } else {
-                        qrDisplay.innerHTML = `<p style="color:red">Không thể tạo link thanh toán. Kiểm tra server.</p>`;
-                    }
-                })
-                .catch(() => {
-                    document.getElementById("qr-code-display").innerHTML = `<p style="color:red">Server chưa chạy. Chạy <code>npm start</code> để kích hoạt thanh toán VNPay.</p>`;
-                });
+                const qrUrl = `https://api.vietqr.io/image/970422-310806130800-compact2.jpg?amount=${total}&addInfo=${encodeURIComponent(transactionContent)}&accountName=NGUYEN%20GIA%20DUNG`;
+                document.getElementById("qr-code-display").innerHTML = `
+                    <img src="${qrUrl}" alt="QR Thanh toán" style="max-width:260px;border-radius:12px;" />
+                    <p style="margin-top:8px;color:#888;font-size:0.85rem;">Quét mã để chuyển khoản</p>
+                `;
             }
         } else {
             document.getElementById("transaction-info").innerHTML = "";
