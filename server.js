@@ -1,5 +1,6 @@
 const express = require("express");
 const path = require("path");
+const bcrypt = require("bcryptjs");
 require("dotenv").config();
 const { createClient } = require("@supabase/supabase-js");
 
@@ -65,6 +66,44 @@ app.post("/api/receipts", async (req, res) => {
         return res.status(500).json({ error: error.message });
     }
     res.json({ success: true, receipt: data });
+});
+
+// ─── Sign up ─────────────────────────────────────────────────────────────────
+app.post("/api/auth/signup", async (req, res) => {
+    const { username, password } = req.body;
+    if (!username || !password) return res.status(400).json({ error: "Thiếu thông tin." });
+
+    const hash = await bcrypt.hash(password, 12);
+    const { data, error } = await supabase
+        .from("users")
+        .insert([{ username, password_hash: hash }])
+        .select()
+        .single();
+
+    if (error) {
+        if (error.code === "23505") return res.status(409).json({ error: "Username đã tồn tại." });
+        return res.status(500).json({ error: error.message });
+    }
+    res.json({ success: true });
+});
+
+// ─── Log in ───────────────────────────────────────────────────────────────────
+app.post("/api/auth/login", async (req, res) => {
+    const { username, password } = req.body;
+    if (!username || !password) return res.status(400).json({ error: "Thiếu thông tin." });
+
+    const { data, error } = await supabase
+        .from("users")
+        .select("password_hash")
+        .eq("username", username)
+        .single();
+
+    if (error || !data) return res.status(401).json({ error: "Username hoặc mật khẩu không đúng." });
+
+    const match = await bcrypt.compare(password, data.password_hash);
+    if (!match) return res.status(401).json({ error: "Username hoặc mật khẩu không đúng." });
+
+    res.json({ success: true, username });
 });
 
 // ─── Start server ─────────────────────────────────────────────────────────────

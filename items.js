@@ -95,6 +95,10 @@ function getRandomInt(min, max) {
     return Math.floor(Math.random() * (max - min + 1)) + min;
 }
 
+function formatCurrency(amount) {
+    return Number(amount).toLocaleString("vi-VN");
+}
+
 // Utility function to generate a random date within the last 'daysBack' days
 function getRandomReceiptDate(daysBack) {
     const date = new Date();
@@ -257,16 +261,19 @@ document.addEventListener("DOMContentLoaded", function() {
     }
 
     // Function to set the authentication state and update UI
-    function setAuthState(loggedIn) {
+    function setAuthState(loggedIn, username = "") {
         isLoggedIn = loggedIn;
         localStorage.setItem("dungShopLoggedIn", loggedIn ? "true" : "false");
+        if (loggedIn && username) localStorage.setItem("dungShopUsername", username);
+        if (!loggedIn) localStorage.removeItem("dungShopUsername");
         updateAuthUI();
     }
 
     // Function to update the authentication UI based on login state
     function updateAuthUI() {
+        const storedUser = localStorage.getItem("dungShopUsername") || "";
         if (authStatus) {
-            authStatus.textContent = isLoggedIn ? "Đã đăng nhập: dung" : "Chưa đăng nhập";
+            authStatus.textContent = isLoggedIn ? `Đã đăng nhập: ${storedUser}` : "Chưa đăng nhập";
         }
         if (authAction) {
             authAction.textContent = isLoggedIn ? "Đăng xuất" : "Đăng nhập";
@@ -330,7 +337,7 @@ document.addEventListener("DOMContentLoaded", function() {
 
         // Try Supabase first, fall back to localStorage
         const dbReceipts = await loadReceiptsFromSupabase();
-        const receiptsToShow = dbReceipts !== null ? dbReceipts : paidReceipts;
+        const receiptsToShow = dbReceipts !== null ? dbReceipts : paidReceipts.slice().reverse();
 
         paidReceiptsList.innerHTML = "";
         if (receiptsToShow.length === 0) {
@@ -348,7 +355,7 @@ document.addEventListener("DOMContentLoaded", function() {
                 <p><strong>Mã chuyển khoản:</strong> ${receipt.transactionCode}</p>
                 <p><strong>Nội dung chuyển khoản:</strong> ${receipt.transactionContent || "Không có nội dung"}</p>
                 <div class="paid-items"></div>
-                <p class="paid-total"><strong>Tổng đã thanh toán:</strong> ${receipt.total} VND</p>
+                <p class="paid-total"><strong>Tổng đã thanh toán:</strong> ${formatCurrency(receipt.total)} VND</p>
             `;
 
             const itemsContainer = receiptDiv.querySelector(".paid-items");
@@ -356,7 +363,7 @@ document.addEventListener("DOMContentLoaded", function() {
                 const itemLine = document.createElement("p");
                 const quantityLabel = item.type === "laundry" ? "Khối lượng" : "Số lượng";
                 const unit = item.type === "laundry" ? ` ${item.unit}` : "";
-                itemLine.textContent = `${item.foodName} - ${quantityLabel}: ${item.quantity}${unit} - ${item.total} VND`;
+                itemLine.textContent = `${item.foodName} - ${quantityLabel}: ${item.quantity}${unit} - ${formatCurrency(item.total)} VND`;
                 itemsContainer.appendChild(itemLine);
             });
 
@@ -433,7 +440,7 @@ document.addEventListener("DOMContentLoaded", function() {
             toppingsHTML += '</div>';
             itemElement.innerHTML = `
                 <h3>${item.foodName}</h3>
-                <p>Giá: ${item.foodPrice} VND</p>
+                <p>Giá: ${formatCurrency(item.foodPrice)} VND</p>
                 ${toppingsHTML}
                 <button type="button" data-type="xoi" data-index="${index}">Mua</button>
             `;
@@ -449,7 +456,7 @@ document.addEventListener("DOMContentLoaded", function() {
         const note = (item.unit === "kg" && item.id === "laundry1") ? '<p><small>Lưu ý: Nếu dưới 1kg, giá là 30.000 VND; trên 8kg, giá là 8.000 VND/kg</small></p>' : (item.unit === "kg" ? '<p><small>Lưu ý: Nếu dưới 1kg, giá là 30.000 VND</small></p>' : '');
         itemElement.innerHTML = `
             <h3>${item.foodName}</h3>
-            <p>Giá/${item.unit}: ${item.foodPrice} VND</p>
+            <p>Giá/${item.unit}: ${formatCurrency(item.foodPrice)} VND</p>
             ${note}
             <input type="number" placeholder="Nhập ${item.unit}" min="0" step="0.1" class="kg-input">
             <button type="button" data-type="laundry" data-index="${index}">Giặt</button>
@@ -472,14 +479,129 @@ document.addEventListener("DOMContentLoaded", function() {
 
     // Event listener for login button
     if (loginButton) {
-        loginButton.addEventListener("click", function() {
+        loginButton.addEventListener("click", async function() {
             const username = loginUsername.value.trim();
             const password = loginPassword.value;
-            if (username === "dung" && password === "dung1") {
-                setAuthState(true);
-                closeLoginModal();
-            } else {
-                loginError.textContent = "Username hoặc mật khẩu không đúng.";
+            if (!username || !password) {
+                loginError.textContent = "Vui lòng nhập đầy đủ thông tin.";
+                return;
+            }
+            loginButton.disabled = true;
+            loginButton.textContent = "Đang kiểm tra...";
+            try {
+                const res = await fetch("/api/auth/login", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ username, password })
+                });
+                const data = await res.json();
+                if (res.ok) {
+                    setAuthState(true, username);
+                    closeLoginModal();
+                } else {
+                    loginError.textContent = data.error;
+                }
+            } catch (_) {
+                loginError.textContent = "Không thể kết nối server.";
+            } finally {
+                loginButton.disabled = false;
+                loginButton.textContent = "Đăng nhập";
+            }
+        });
+    }
+
+    // Sign up handlers
+    const signupModal = document.getElementById("signup-modal");
+    const signupUsername = document.getElementById("signup-username");
+    const signupPassword = document.getElementById("signup-password");
+    const signupConfirm = document.getElementById("signup-confirm");
+    const signupButton = document.getElementById("signup-button");
+    const signupCancel = document.getElementById("signup-cancel");
+    const signupError = document.getElementById("signup-error");
+    const signupLink = document.getElementById("signup-link");
+
+    function validatePassword(pw) {
+        return {
+            length: pw.length >= 8,
+            upper: /[A-Z]/.test(pw),
+            number: /[0-9]/.test(pw),
+            special: /[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>/?]/.test(pw)
+        };
+    }
+
+    if (signupPassword) {
+        signupPassword.addEventListener("input", function() {
+            const rules = validatePassword(this.value);
+            const set = (id, ok, text) => {
+                const el = document.getElementById(id);
+                if (el) { el.style.color = ok ? "green" : "#aaa"; el.textContent = (ok ? "✓ " : "✗ ") + text; }
+            };
+            set("rule-length", rules.length, "Ít nhất 8 ký tự");
+            set("rule-upper", rules.upper, "Ít nhất 1 chữ hoa");
+            set("rule-number", rules.number, "Ít nhất 1 số");
+            set("rule-special", rules.special, "Ít nhất 1 ký tự đặc biệt (!@#$...)");
+        });
+    }
+
+    if (signupLink) {
+        signupLink.addEventListener("click", function(e) {
+            e.preventDefault();
+            closeLoginModal();
+            if (signupModal) signupModal.classList.remove("hidden");
+            if (signupUsername) signupUsername.focus();
+        });
+    }
+
+    if (signupCancel) {
+        signupCancel.addEventListener("click", function() {
+            if (signupModal) signupModal.classList.add("hidden");
+            if (signupUsername) signupUsername.value = "";
+            if (signupPassword) signupPassword.value = "";
+            if (signupConfirm) signupConfirm.value = "";
+            if (signupError) signupError.textContent = "";
+        });
+    }
+
+    if (signupButton) {
+        signupButton.addEventListener("click", async function() {
+            const username = signupUsername.value.trim();
+            const password = signupPassword.value;
+            const confirm = signupConfirm.value;
+            signupError.textContent = "";
+            if (!username || !password) {
+                signupError.textContent = "Vui lòng nhập đầy đủ thông tin.";
+                return;
+            }
+            const rules = validatePassword(password);
+            if (!rules.length || !rules.upper || !rules.number || !rules.special) {
+                signupError.textContent = "Mật khẩu chưa đáp ứng yêu cầu.";
+                return;
+            }
+            if (password !== confirm) {
+                signupError.textContent = "Mật khẩu xác nhận không khớp.";
+                return;
+            }
+            signupButton.disabled = true;
+            signupButton.textContent = "Đang đăng ký...";
+            try {
+                const res = await fetch("/api/auth/signup", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ username, password })
+                });
+                const data = await res.json();
+                if (res.ok) {
+                    if (signupModal) signupModal.classList.add("hidden");
+                    alert(`Đăng ký thành công! Hãy đăng nhập với username: ${username}`);
+                    openLoginModal();
+                } else {
+                    signupError.textContent = data.error;
+                }
+            } catch (_) {
+                signupError.textContent = "Không thể kết nối server.";
+            } finally {
+                signupButton.disabled = false;
+                signupButton.textContent = "Đăng ký";
             }
         });
     }
@@ -553,16 +675,16 @@ document.addEventListener("DOMContentLoaded", function() {
             const unit = item.type === "laundry" ? ` ${item.unit}` : "";
             let toppingsInfo = "";
             if (item.type === "xoi" && item.selectedToppings && item.selectedToppings.length > 0) {
-                toppingsInfo = `<br><small>Toppings: ${item.selectedToppings.map(t => t.name).join(", ")} (+${item.toppingPrice} VND)</small>`;
+                toppingsInfo = `<br><small>Toppings: ${item.selectedToppings.map(t => t.name).join(", ")} (+${formatCurrency(item.toppingPrice)} VND)</small>`;
             }
             itemDiv.innerHTML = `
-                <p>${item.foodName} - ${quantityLabel}: ${item.quantity}${unit} - Tổng: ${item.total} VND${toppingsInfo}</p>
+                <p>${item.foodName} - ${quantityLabel}: ${item.quantity}${unit} - Tổng: ${formatCurrency(item.total)} VND${toppingsInfo}</p>
             `;
             cartItemsDiv.appendChild(itemDiv);
             total += item.total;
         });
         const totalDiv = document.createElement("div");
-        totalDiv.innerHTML = `<h3>Tổng cộng: ${total} VND</h3>`;
+        totalDiv.innerHTML = `<h3>Tổng cộng: ${formatCurrency(total)} VND</h3>`;
         cartItemsDiv.appendChild(totalDiv);
         if (markPaidButton) {
             markPaidButton.disabled = total === 0;
@@ -577,7 +699,7 @@ document.addEventListener("DOMContentLoaded", function() {
             const xoiItemsCount = cart.filter(item => item.type === "xoi").reduce((sum, item) => sum + item.quantity, 0);
             const laundryItems = cart.filter(item => item.type === "laundry");
             const laundryInfo = laundryItems.length > 0
-                ? laundryItems.map(item => `${item.foodName}: ${item.quantity} ${item.unit} - ${item.total} VND`).join("; ")
+                ? laundryItems.map(item => `${item.foodName}: ${item.quantity} ${item.unit} - ${formatCurrency(item.total)} VND`).join("; ")
                 : "";
             const transactionContent = `${transactionCode} ${purchaserName}`.slice(0, 25);
 
@@ -587,7 +709,7 @@ document.addEventListener("DOMContentLoaded", function() {
                 <p><strong>Người mua:</strong> ${purchaserName}</p>
                 <p><strong>Số xôi:</strong> ${xoiItemsCount}</p>
                 <p><strong>Giặt ủi:</strong> ${laundryInfo || "Không có"}</p>
-                <p><strong>Số tiền:</strong> ${total} VND</p>
+                <p><strong>Số tiền:</strong> ${formatCurrency(total)} VND</p>
             `;
 
             window.currentTransactionCode = transactionCode;
