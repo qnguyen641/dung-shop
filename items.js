@@ -139,16 +139,16 @@ let paidReceipts = JSON.parse(localStorage.getItem("paidReceipts")) || Array.fro
 
 // ─── Supabase receipt helpers ─────────────────────────────────────────────────
 async function saveReceiptToSupabase(receipt) {
-    try {
-        const res = await fetch("/api/receipts", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify(receipt)
-        });
-        if (!res.ok) console.warn("Không thể lưu receipt lên Supabase.");
-    } catch (_) {
-        // Server chưa chạy - bỏ qua, đã lưu localStorage rồi
+    const res = await fetch("/api/receipts", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(receipt)
+    });
+    if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.error || `HTTP ${res.status}`);
     }
+    return res.json();
 }
 
 async function loadReceiptsFromSupabase() {
@@ -394,7 +394,13 @@ document.addEventListener("DOMContentLoaded", function() {
         };
         paidReceipts.push(receipt);
         localStorage.setItem("paidReceipts", JSON.stringify(paidReceipts));
-        await saveReceiptToSupabase(receipt);
+        try {
+            await saveReceiptToSupabase(receipt);
+        } catch (err) {
+            console.error("Lỗi lưu Supabase:", err.message);
+            alert("Lưu hóa đơn thất bại: " + err.message);
+            return;
+        }
 
         // Show success checkmark animation
         const qrCodeDisplay = document.getElementById("qr-code-display");
