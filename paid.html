@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <title>Đã Thanh Toán - Shop của Anh Dũng</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="container">
+        <p>Shop của Anh Dũng</p>
+
+        <div class="auth-panel">
+            <span id="auth-status">Chưa đăng nhập</span>
+            <button id="auth-action" class="action-button">Đăng nhập</button>
+        </div>
+
+        <div id="login-warning" class="login-warning hidden">
+            <p>Bạn cần đăng nhập để xem danh sách hóa đơn đã thanh toán.</p>
+            <p><a href="main.html">Quay lại trang chính</a></p>
+        </div>
+
+        <div id="paid-content" class="paid-receipts-sheet hidden">
+            <header class="receipt-header">
+                <h2>Lịch Sử Đã Thanh Toán</h2>
+                <p>Danh sách hóa đơn đã thanh toán.</p>
+            </header>
+            <div id="paid-receipts-list"></div>
+        </div>
+
+        <div id="login-modal" class="modal hidden">
+            <div class="login-card">
+                <h2>Đăng nhập</h2>
+                <p>Nhập username và mật khẩu để truy cập trang Đã Thanh Toán.</p>
+                <div class="login-field">
+                    <label for="login-username">Username</label>
+                    <input id="login-username" type="text" placeholder="dung">
+                </div>
+                <div class="login-field">
+                    <label for="login-password">Password</label>
+                    <input id="login-password" type="password" placeholder="dung1">
+                </div>
+                <p id="login-error" class="login-error"></p>
+                <div class="login-actions">
+                    <button id="login-button" class="action-button" type="button">Đăng nhập</button>
+                    <button id="login-cancel" class="cancel-button" type="button">Hủy</button>
+                </div>
+            </div>
+        </div>
+
+        <script src="items.js"></script>
+    </div>
+</body>
+</html>

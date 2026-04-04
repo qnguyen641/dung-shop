@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <title>Cổng Thanh Toán của Dũng</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="container">
+        <p class="site-header">Cổng Thanh Toán của Dũng</p>
+
+        <div class="auth-panel">
+            <span id="auth-status">Chưa đăng nhập</span>
+            <button id="auth-action" class="action-button">Đăng nhập</button>
+        </div>
+
+        <div class="customer-name-panel">
+            <label for="main-customer-name"><strong>Tên khách hàng:</strong></label>
+            <input id="main-customer-name" type="text" placeholder="Nhập tên khách hàng" />
+            <button id="customer-name-submit" class="action-button" type="button">Xác nhận</button>
+            <p id="customer-name-confirm" class="info-text">Chưa có tên khách hàng.</p>
+        </div>
+
+        <nav class="tab-nav">
+            <button class="tab-button active" data-tab="xoi">Xôi xéo Đặt Biệt</button>
+            <button class="tab-button" data-tab="laundry">Giặt Ủi Ba Thơm</button>
+            <button class="tab-button" data-tab="receipt">Thanh Toán</button>
+            <button class="tab-button" data-tab="paid-receipts" id="paid-tab" style="display: none;">Đã Thanh Toán</button>
+        </nav>
+
+        <div id="xoi-container" class="food-container active"></div>
+        <div class="price-list" data-tab="xoi">
+            <h4>Bảng giá Xôi</h4>
+            <ul>
+                <li>Xôi xéo chà bông - 15,000 VND</li>
+                <li>Xôi xéo chà bông + chả lụa - 20,000 VND</li>
+                <li>Xôi xéo chà bông + chả lụa + chả mỡ - 25,000 VND</li>
+                <li>Xôi xéo chà bông + chả + lap xưởng - 30,000 VND</li>
+            </ul>
+            <h4 style="margin-top: 15px;">Toppings Thêm</h4>
+            <ul>
+                <li>Thêm lạp xưởng - 5,000 VND</li>
+                <li>Thêm chả lụa/chả mỡ - 5,000 VND</li>
+                <li>Thêm chà bông - 5,000 VND</li>
+            </ul>
+        </div>
+        <div id="laundry-container" class="food-container"></div>
+        <div class="price-list" data-tab="laundry" style="display: none;">
+            <h4>Bảng giá Giặt Ủi</h4>
+            <ul>
+                <li>Giặt Quần Áo - 10,000 VND/kg (dưới 1kg: 30,000 VND; trên 8kg: 8,000 VND/kg)</li>
+                <li>Giặt Chăn Ga Gối - 20,000 VND/kg</li>
+                <li>Giặt Giày - 40,000 VND/đôi</li>
+                <li>Giặt Gấu Bông - 30,000 VND/con</li>
+                <li>Giặt Áo Khoác - 40,000 VND/cái</li>
+            </ul>
+        </div>
+        <div id="receipt-container" class="food-container">
+            <div class="receipt-sheet">
+                <header class="receipt-header">
+                    <h2>THANH TOÁN</h2>
+                    <p>Shop của Anh Dũng</p>
+                    <p>Ngày: <span id="receipt-date"></span></p>
+                </header>
+                <div class="receipt-content">
+                    <div class="cart-section">
+                        <div id="cart-items"></div>
+                    </div>
+                    <div class="qr-section">
+                        <div class="qr-code-space">
+                            <h3>QR Code cho Thanh Toán</h3>
+                            <div id="transaction-info"></div>
+                            <div id="qr-code-display"></div>
+                        </div>
+                    </div>
+                </div>
+                <div class="receipt-actions">
+                    <button id="mark-paid-button" type="button" class="action-button">Đánh dấu đã thanh toán</button>
+                </div>
+            </div>
+        </div>
+
+        <div id="paid-receipts-container" class="food-container">
+            <div class="paid-receipts-sheet">
+                <header class="receipt-header">
+                    <h2>Lịch Sử Đã Thanh Toán</h2>
+                    <p>Danh sách hóa đơn đã thanh toán.</p>
+                </header>
+                <div id="paid-receipts-list"></div>
+            </div>
+        </div>
+
+        <div id="login-modal" class="modal hidden">
+            <div class="login-card">
+                <h2>Đăng nhập</h2>
+                <p>Nhập username và mật khẩu để truy cập tab Đã Thanh Toán.</p>
+                <div class="login-field">
+                    <label for="login-username">Username</label>
+                    <input id="login-username" type="text" placeholder="dung">
+                </div>
+                <div class="login-field">
+                    <label for="login-password">Password</label>
+                    <input id="login-password" type="password" placeholder="dung1">
+                </div>
+                <p id="login-error" class="login-error"></p>
+                <div class="login-actions">
+                    <button id="login-button" class="action-button" type="button">Đăng nhập</button>
+                    <button id="login-cancel" class="cancel-button" type="button">Hủy</button>
+                </div>
+            </div>
+        </div>
+
+        <script src="items.js"></script>
+    </div>
+</body>
+</html>
