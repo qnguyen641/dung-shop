@@ -308,10 +308,11 @@ document.addEventListener("DOMContentLoaded", function() {
         }
 
         receiptsToShow.forEach((receipt, receiptIndex) => {
+            const receiptNumber = receiptsToShow.length - receiptIndex;
             const receiptDiv = document.createElement("div");
             receiptDiv.classList.add("paid-receipt-card");
             receiptDiv.innerHTML = `
-                <h3>Hóa đơn #${receiptIndex + 1}</h3>
+                <h3>Hóa đơn #${receiptNumber}</h3>
                 <p><strong>Ngày:</strong> ${receipt.date}</p>
                 <p><strong>Người mua:</strong> ${receipt.customerName || "Khách lạ"}</p>
                 <p><strong>Mã chuyển khoản:</strong> ${receipt.transactionCode}</p>
