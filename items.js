@@ -169,25 +169,10 @@ async function loadReceiptsFromSupabase() {
     }
 }
 
-// Polling handle for payment status
+// Polling handle for payment status (unused, kept for future use)
 let paymentPollingInterval = null;
 
-function startPaymentPolling(orderCode) {
-    stopPaymentPolling();
-    paymentPollingInterval = setInterval(async () => {
-        try {
-            const res = await fetch(`/api/payment-status/${orderCode}`);
-            const data = await res.json();
-            if (data.status === "PAID") {
-                stopPaymentPolling();
-                triggerPaymentSuccess();
-            }
-        } catch (_) {
-            // Server chưa chạy hoặc lỗi mạng - bỏ qua
-        }
-    }, 3000);
-}
-
+function startPaymentPolling() {}
 function stopPaymentPolling() {
     if (paymentPollingInterval) {
         clearInterval(paymentPollingInterval);
@@ -255,37 +240,6 @@ document.addEventListener("DOMContentLoaded", function() {
     }
 
     updateCustomerNameDisplay();
-
-    // ─── Handle VNPay return URL (?payment=success&order=xxx) ────────────────
-    const urlParams = new URLSearchParams(window.location.search);
-    if (urlParams.get("payment") === "success") {
-        const pendingRaw = localStorage.getItem("pendingCart");
-        if (pendingRaw) {
-            try {
-                const pending = JSON.parse(pendingRaw);
-                cart = pending.cart || [];
-                window.currentTransactionCode = pending.transactionCode;
-                window.currentTransactionDateTime = pending.transactionDateTime;
-                window.currentTransactionContent = pending.transactionContent;
-                window.currentOrderCode = pending.orderCode;
-                localStorage.removeItem("pendingCart");
-                // Clean URL without reload
-                window.history.replaceState({}, document.title, "/");
-                // Switch to receipt tab then trigger success
-                showTab("receipt");
-                setTimeout(() => triggerPaymentSuccess(), 300);
-            } catch (e) {
-                console.error("Lỗi khôi phục pending cart:", e);
-                localStorage.removeItem("pendingCart");
-                window.history.replaceState({}, document.title, "/");
-            }
-        } else {
-            window.history.replaceState({}, document.title, "/");
-        }
-    } else if (urlParams.get("payment") === "failed") {
-        window.history.replaceState({}, document.title, "/");
-        alert("Thanh toán không thành công hoặc đã bị hủy.");
-    }
 
     // Helper function to close the login modal and reset fields
     function closeLoginModal() {
@@ -608,10 +562,9 @@ document.addEventListener("DOMContentLoaded", function() {
             markPaidButton.disabled = total === 0;
         }
 
-        // Generate VNPay payment button
+        // Generate VietQR image
         if (total > 0) {
-            const orderCode = window.currentOrderCode || getRandomInt(100000, 999999);
-            const transactionCode = "TXN" + orderCode;
+            const transactionCode = window.currentTransactionCode || ("TXN" + getRandomInt(100000, 999999));
             const transactionDateTime = window.currentTransactionDateTime || new Date().toLocaleString("vi-VN");
             const purchaserName = getCustomerName();
             const xoiItemsCount = cart.filter(item => item.type === "xoi").reduce((sum, item) => sum + item.quantity, 0);
@@ -619,72 +572,34 @@ document.addEventListener("DOMContentLoaded", function() {
             const laundryInfo = laundryItems.length > 0
                 ? laundryItems.map(item => `${item.foodName}: ${item.quantity} ${item.unit} - ${item.total} VND`).join("; ")
                 : "";
-            const transactionContent = `${transactionCode} ${purchaserName}`.slice(0, 25);
+            const contentParts = [`Ma:${transactionCode}`, `Khach:${purchaserName}`];
+            const transactionContent = contentParts.join(" | ");
 
             document.getElementById("transaction-info").innerHTML = `
-                <p><strong>Mã đơn hàng:</strong> ${transactionCode}</p>
-                <p><strong>Thời gian:</strong> ${transactionDateTime}</p>
+                <p><strong>Mã chuyển khoản:</strong> ${transactionCode}</p>
+                <p><strong>Thời gian mua:</strong> ${transactionDateTime}</p>
                 <p><strong>Người mua:</strong> ${purchaserName}</p>
-                <p><strong>Số xôi:</strong> ${xoiItemsCount}</p>
-                <p><strong>Giặt ủi:</strong> ${laundryInfo || "Không có"}</p>
+                <p><strong>Nội dung chuyển khoản:</strong> ${transactionContent}</p>
+                <p><strong>Số xôi đã mua:</strong> ${xoiItemsCount}</p>
+                <p><strong>Thông tin giặt ủi:</strong> ${laundryInfo || "Không có dịch vụ giặt ủi"}</p>
+                <p><strong>Ngân hàng:</strong> MBBank</p>
+                <p><strong>Số tài khoản:</strong> 310806130800</p>
+                <p><strong>Tên tài khoản:</strong> Thu Phuong Nguyen</p>
                 <p><strong>Số tiền:</strong> ${total} VND</p>
             `;
+
+            const qrUrl = `https://api.vietqr.io/image/970422-310806130800-compact2.jpg?amount=${total}&addInfo=${encodeURIComponent(transactionContent)}&accountName=Thu%20Phuong%20Nguyen`;
+            document.getElementById("qr-code-display").innerHTML = `<img src="${qrUrl}" alt="QR Code" style="width:200px;height:200px;">`;
 
             window.currentTransactionCode = transactionCode;
             window.currentTransactionDateTime = transactionDateTime;
             window.currentTransactionContent = transactionContent;
-
-            // Only create payment link once per order
-            if (!window.currentOrderCode) {
-                window.currentOrderCode = orderCode;
-                const qrDisplay = document.getElementById("qr-code-display");
-                qrDisplay.innerHTML = `<p style="color:#888">⏳ Đang tạo link thanh toán...</p>`;
-
-                fetch("/api/create-payment", {
-                    method: "POST",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({
-                        orderCode,
-                        amount: total,
-                        description: transactionContent,
-                        buyerName: purchaserName
-                    })
-                })
-                .then(r => r.json())
-                .then(data => {
-                    if (data.paymentUrl) {
-                        // Save cart before redirecting to VNPay
-                        localStorage.setItem("pendingCart", JSON.stringify({
-                            cart,
-                            transactionCode,
-                            transactionDateTime,
-                            transactionContent,
-                            purchaserName,
-                            total,
-                            orderCode
-                        }));
-                        qrDisplay.innerHTML = `
-                            <a href="${data.paymentUrl}" class="action-button" style="display:inline-block;text-decoration:none;padding:12px 24px;font-size:1rem;">
-                                💳 Thanh toán qua VNPay
-                            </a>
-                            <p style="margin-top:8px;color:#888;font-size:0.85rem;">Nhấn để chuyển đến cổng thanh toán VNPay</p>
-                        `;
-                        startPaymentPolling(orderCode);
-                    } else {
-                        qrDisplay.innerHTML = `<p style="color:red">Không thể tạo link thanh toán. Kiểm tra server.</p>`;
-                    }
-                })
-                .catch(() => {
-                    document.getElementById("qr-code-display").innerHTML = `<p style="color:red">Server chưa chạy. Chạy <code>npm start</code> để kích hoạt thanh toán VNPay.</p>`;
-                });
-            }
         } else {
             document.getElementById("transaction-info").innerHTML = "";
             document.getElementById("qr-code-display").innerHTML = "";
             window.currentTransactionCode = null;
             window.currentTransactionDateTime = null;
             window.currentOrderCode = null;
-            stopPaymentPolling();
         }
     }
 });
