@@ -681,7 +681,7 @@ document.addEventListener("DOMContentLoaded", function() {
 
             if (!window.currentOrderCode) {
                 window.currentOrderCode = orderCode;
-                const qrUrl = `https://api.vietqr.io/image/970422-310806130800-compact2.jpg?amount=${total}&addInfo=${encodeURIComponent(transactionContent)}&accountName=NGUYEN%20GIA%20DUNG`;
+                const qrUrl = `https://api.vietqr.io/image/970423-30906989295-compact2.jpg?amount=${total}&addInfo=${encodeURIComponent(transactionContent)}&accountName=DAO%20VIET%20DUNG`;
                 document.getElementById("qr-code-display").innerHTML = `
                     <img src="${qrUrl}" alt="QR Thanh toán" style="max-width:260px;border-radius:12px;" />
                     <p style="margin-top:8px;color:#888;font-size:0.85rem;">Quét mã để chuyển khoản</p>
